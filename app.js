@@ -4,9 +4,9 @@ db.version(1).stores({
 });
 
 // Supabase client
-const supabaseUrl = 'TU_SUPABASE_URL'; // Reemplaza con tu URL
-const supabaseKey = 'TU_SUPABASE_ANON_KEY'; // Reemplaza con tu key
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = 'https://fxinubadirwbotnoynkw.supabase.co'; // Reemplaza con tu URL
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4aW51YmFkaXJ3Ym90bm95bmt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNTU0MzksImV4cCI6MjA5MjYzMTQzOX0.3msFK_93cssiGrrjcS5Y7i1t5Nt9qduO9FIcpwAN6Eo'; // Reemplaza con tu key
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
 // En Vercel usamos la misma raíz para la web y la API
 const API_BASE = '';
@@ -317,7 +317,7 @@ function handleRateChange(event) {
 
 async function syncRate() {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('tasas_diarias')
       .upsert({ fecha: new Date().toISOString().split('T')[0], tasa: dailyRate });
     if (error) throw error;
@@ -423,7 +423,7 @@ async function loadData() {
 async function loadInitialRate() {
   if (!navigator.onLine) return;
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('tasas_diarias')
       .select('tasa')
       .eq('fecha', new Date().toISOString().split('T')[0])
@@ -584,7 +584,7 @@ async function syncPendingRecords() {
 
   try {
     for (const deuda of pending) {
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('deudas')
         .upsert({
           id: deuda.id,
