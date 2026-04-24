@@ -1,0 +1,11 @@
+[build]
+  publish = "."
+  command = "echo 'No build step'"
+
+[build.environment]
+  API_URL = "https://tu-vercel-app.vercel.app"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

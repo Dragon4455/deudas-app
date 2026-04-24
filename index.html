@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Deudas Local - Offline First</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 py-6">
+      <header class="mb-6 rounded-3xl bg-slate-900/80 border border-slate-700 p-5 shadow-xl shadow-slate-950/20">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="text-sm uppercase tracking-[0.3em] text-cyan-400">Gestión de Cuentas</p>
+            <h1 class="mt-2 text-3xl font-semibold text-white">Deudas Local - Papelería & Copiado</h1>
+          </div>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl bg-slate-800/90 p-4 border border-slate-700">
+              <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Conexión</p>
+              <p id="connectionStatus" class="mt-2 text-lg font-semibold">🔴 Offline</p>
+            </div>
+            <div class="rounded-2xl bg-slate-800/90 p-4 border border-slate-700">
+              <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Sincronización</p>
+              <p id="syncStatus" class="mt-2 text-lg font-semibold">Listo</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="space-y-6">
+        <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <div class="rounded-3xl border border-slate-700 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/10">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <p class="text-sm uppercase tracking-[0.25em] text-cyan-300">Tasa de Cambio del Día</p>
+                <p class="mt-2 text-2xl font-semibold text-white">Bs / USD</p>
+              </div>
+              <div class="flex items-center gap-3 rounded-3xl bg-cyan-500/10 px-4 py-3 text-cyan-200 ring-1 ring-cyan-500/20">
+                <span class="text-2xl">💱</span>
+                <span id="dailyRateDisplay" class="text-xl font-semibold">0.00</span>
+              </div>
+            </div>
+            <div class="mt-6 grid gap-4 sm:grid-cols-2">
+              <label class="block">
+                <span class="text-sm text-slate-300">Tasa actual</span>
+                <input id="dailyRateInput" type="number" min="0" step="0.01" placeholder="Ej. 30.50"
+                  class="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-cyan-400" />
+              </label>
+              <div class="block">
+                <span class="text-sm text-slate-300">Última actualización</span>
+                <p id="dailyRateHint" class="mt-2 rounded-2xl bg-slate-950/80 px-4 py-3 text-slate-300">Ingresa la tasa para recalcular.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid gap-4">
+            <article class="rounded-3xl border border-slate-700 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/10">
+              <p class="text-sm uppercase tracking-[0.24em] text-slate-400">Total Pendiente USD</p>
+              <p id="totalUsd" class="mt-4 text-3xl font-semibold text-white">$0.00</p>
+              <p class="mt-2 text-sm text-slate-400">Solo deudas pendientes en dólares.</p>
+            </article>
+            <article class="rounded-3xl border border-slate-700 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/10">
+              <p class="text-sm uppercase tracking-[0.24em] text-slate-400">Total Pendiente Bs</p>
+              <p id="totalBs" class="mt-4 text-3xl font-semibold text-emerald-300">Bs 0.00</p>
+              <p class="mt-2 text-sm text-slate-400">Incluye Bs + conversión de USD según tasa del día.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="rounded-3xl border border-slate-700 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/10">
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p class="text-sm uppercase tracking-[0.24em] text-cyan-300">Nueva deuda</p>
+              <h2 class="mt-2 text-2xl font-semibold text-white">Registrar ingreso</h2>
+            </div>
+            <p class="text-sm text-slate-400">Todos los registros se almacenan localmente y se sincronizan cuando vuelvas online.</p>
+          </div>
+
+          <form id="debtForm" class="mt-6 grid gap-4">
+            <label class="block">
+              <span class="text-sm text-slate-300">Cliente</span>
+              <input id="clienteInput" type="text" placeholder="Nombre del cliente"
+                class="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400" required />
+            </label>
+
+            <div class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm text-slate-300">Productos / servicios</p>
+                  <p class="text-xs text-slate-500">Registra varios productos con su cantidad y precio en esta deuda.</p>
+                </div>
+                <button id="addItemButton" type="button" class="inline-flex items-center justify-center rounded-full border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/15">+ Agregar producto</button>
+              </div>
+              <div id="itemRowsContainer" class="mt-4 space-y-4"></div>
+              <div class="mt-4 rounded-3xl bg-slate-900/90 p-4 text-sm text-slate-300">
+                <p class="font-semibold text-white">Total de la deuda: <span id="debtTotalDisplay">Bs 0.00</span></p>
+              </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <fieldset class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4">
+                <legend class="px-2 text-sm text-slate-300">Moneda</legend>
+                <div class="flex flex-wrap gap-3 mt-3">
+                  <label class="cursor-pointer rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white transition hover:border-cyan-400">
+                    <input type="radio" name="moneda" value="USD" checked class="mr-2 leading-tight" /> USD
+                  </label>
+                  <label class="cursor-pointer rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white transition hover:border-cyan-400">
+                    <input type="radio" name="moneda" value="BS" class="mr-2 leading-tight" /> BS
+                  </label>
+                </div>
+              </fieldset>
+              <label id="tasaTransaccionGroup" class="block hidden">
+                <span class="text-sm text-slate-300">Tasa de transacción</span>
+                <input id="tasaTransaccionInput" type="number" min="0" step="0.01" placeholder="Ej. 30.20"
+                  class="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400" />
+              </label>
+            </div>
+
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <p class="text-sm text-slate-400">Los registros se guardan localmente y se marcan para sincronización cuando vuelves a estar online.</p>
+              <div class="flex gap-3">
+                <button id="cancelEditBtn" type="button" class="hidden inline-flex items-center justify-center rounded-3xl border border-slate-700 bg-slate-950 px-6 py-3 text-sm font-semibold text-slate-200 transition hover:border-cyan-400">Cancelar</button>
+                <button type="submit" class="inline-flex items-center justify-center rounded-3xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">Agregar deuda</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <section class="rounded-3xl border border-slate-700 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/10">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p class="text-sm uppercase tracking-[0.24em] text-cyan-300">Buscar clientes</p>
+              <h2 class="mt-2 text-2xl font-semibold text-white">Lista de deudas</h2>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <input id="searchInput" type="search" placeholder="Buscar por cliente"
+                class="w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-cyan-400" />
+              <div class="flex flex-wrap gap-2">
+                <button type="button" data-filter="ALL" class="filter-btn rounded-full border border-cyan-500/40 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-200 transition hover:bg-cyan-500/15">Todas</button>
+                <button type="button" data-filter="PENDIENTE" class="filter-btn rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:border-cyan-400">Pendientes</button>
+                <button type="button" data-filter="PAGADO" class="filter-btn rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:border-cyan-400">Pagadas</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="debtList" class="mt-6 space-y-4"></div>
+
+          <p id="emptyState" class="mt-6 rounded-3xl border border-dashed border-slate-700 bg-slate-950/70 p-6 text-center text-slate-400 hidden">No hay deudas en esta vista. Registra un nuevo ingreso para empezar.</p>
+        </section>
+      </main>
+
+      <div id="debtModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/90 p-4">
+        <div class="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
+          <div class="flex items-center justify-between border-b border-slate-700 px-5 py-4">
+            <div>
+              <p class="text-xs uppercase tracking-[0.3em] text-cyan-400">Detalle de deuda</p>
+              <h2 id="modalClient" class="mt-2 text-2xl font-semibold text-white"></h2>
+            </div>
+            <button id="modalCloseButton" class="rounded-3xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400">Cerrar</button>
+          </div>
+          <div class="p-5 space-y-5">
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="rounded-3xl border border-slate-700 bg-slate-950/90 p-4">
+                <p class="text-sm uppercase tracking-[0.24em] text-slate-400">Total en USD</p>
+                <p id="modalTotalUsd" class="mt-3 text-xl font-semibold text-white">$0.00</p>
+              </div>
+              <div class="rounded-3xl border border-slate-700 bg-slate-950/90 p-4">
+                <p class="text-sm uppercase tracking-[0.24em] text-slate-400">Total en Bs</p>
+                <p id="modalTotalBs" class="mt-3 text-xl font-semibold text-emerald-300">Bs 0.00</p>
+              </div>
+            </div>
+            <div class="rounded-3xl border border-slate-700 bg-slate-950/90 p-4">
+              <p class="text-sm uppercase tracking-[0.24em] text-slate-400">Productos</p>
+              <ul id="modalItemsList" class="mt-4 space-y-3 text-slate-300"></ul>
+            </div>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <button id="modalCopyButton" type="button" class="inline-flex items-center justify-center rounded-3xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">Copiar todo</button>
+              <p id="modalConversionNote" class="text-sm text-slate-400">Seleccione USD o Bs cuando copie el detalle.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

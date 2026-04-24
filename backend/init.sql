@@ -1,0 +1,30 @@
+-- Crear base de datos
+CREATE DATABASE IF NOT EXISTS deudas_db;
+USE deudas_db;
+
+-- Tabla para tasas diarias
+CREATE TABLE IF NOT EXISTS tasas_diarias (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  fecha DATE NOT NULL UNIQUE,
+  tasa DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabla para deudas
+CREATE TABLE IF NOT EXISTS deudas (
+  id VARCHAR(36) PRIMARY KEY,
+  cliente VARCHAR(255) NOT NULL,
+  items JSON NOT NULL,
+  total DECIMAL(10,2) NOT NULL,
+  moneda ENUM('USD', 'BS') NOT NULL,
+  tasa_transaccion DECIMAL(10,2) DEFAULT 0,
+  fecha DATETIME NOT NULL,
+  estado ENUM('PENDIENTE', 'PAGADO') DEFAULT 'PENDIENTE',
+  sync_status TINYINT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Insertar tasa inicial si no existe
+INSERT IGNORE INTO tasas_diarias (fecha, tasa) VALUES (CURDATE(), 30.00);
