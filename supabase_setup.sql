@@ -29,9 +29,13 @@ CREATE INDEX idx_tasas_diarias_fecha ON tasas_diarias(fecha DESC);
 
 -- Políticas RLS (Row Level Security) si quieres restringir acceso
 -- Para deudas
-ALTER TABLE deudas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Permitir todo para usuarios autenticados" ON deudas FOR ALL USING (auth.role() = 'authenticated');
+-- ALTER TABLE deudas ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Permitir todo para usuarios autenticados" ON deudas FOR ALL USING (auth.role() = 'authenticated');
 
 -- Para tasas
-ALTER TABLE tasas_diarias ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Permitir todo para usuarios autenticados" ON tasas_diarias FOR ALL USING (auth.role() = 'authenticated');
+-- ALTER TABLE tasas_diarias ENABLE ROW LEVEL SECURITY;
+-- CREATE POLICY "Permitir todo para usuarios autenticados" ON tasas_diarias FOR ALL USING (auth.role() = 'authenticated');
+
+-- Deshabilitar RLS para acceso público (temporal, para testing)
+ALTER TABLE deudas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE tasas_diarias DISABLE ROW LEVEL SECURITY;
