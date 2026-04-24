@@ -3,6 +3,11 @@ db.version(1).stores({
   deudas: 'id, cliente, estado, sync_status, fecha, moneda'
 });
 
+// Supabase client
+const supabaseUrl = 'TU_SUPABASE_URL'; // Reemplaza con tu URL
+const supabaseKey = 'TU_SUPABASE_ANON_KEY'; // Reemplaza con tu key
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
 // En Vercel usamos la misma raíz para la web y la API
 const API_BASE = '';
 
@@ -312,13 +317,10 @@ function handleRateChange(event) {
 
 async function syncRate() {
   try {
-    await fetch(`${API_BASE}/api/tasa`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ tasa: dailyRate }),
-    });
+    const { error } = await supabase
+      .from('tasas_diarias')
+      .upsert({ fecha: new Date().toISOString().split('T')[0], tasa: dailyRate });
+    if (error) throw error;
   } catch (error) {
     console.warn('Error sincronizando tasa:', error);
   }
@@ -421,10 +423,15 @@ async function loadData() {
 async function loadInitialRate() {
   if (!navigator.onLine) return;
   try {
-    const response = await fetch(`${API_BASE}/api/tasa`);
-    if (response.ok) {
-      const data = await response.json();
-      dailyRate = Number(data.tasa);
+    const { data, error } = await supabase
+      .from('tasas_diarias')
+      .select('tasa')
+      .eq('fecha', new Date().toISOString().split('T')[0])
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    if (data && data.length > 0) {
+      dailyRate = Number(data[0].tasa);
       elements.dailyRateInput.value = dailyRate.toFixed(2);
       elements.dailyRateDisplay.textContent = dailyRate.toFixed(2);
     }
@@ -576,14 +583,22 @@ async function syncPendingRecords() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/api/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(pending),
-    });
-    if (!response.ok) throw new Error('Error en sincronización');
+    for (const deuda of pending) {
+      const { error } = await supabase
+        .from('deudas')
+        .upsert({
+          id: deuda.id,
+          cliente: deuda.cliente,
+          items: JSON.stringify(deuda.items),
+          total: deuda.total,
+          moneda: deuda.moneda,
+          tasa_transaccion: deuda.tasa_transaccion,
+          fecha: deuda.fecha,
+          estado: deuda.estado,
+          sync_status: 1
+        });
+      if (error) throw error;
+    }
     await Promise.all(pending.map((deuda) => db.deudas.update(deuda.id, { sync_status: 1 })));
     elements.syncStatus.textContent = '✅ Sincronizado';
     elements.syncStatus.classList.add('text-emerald-300');
