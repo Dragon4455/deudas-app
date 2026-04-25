@@ -85,6 +85,9 @@ window.addEventListener('appinstalled', () => {
 function initUI() {
   resetItemRows(); // Asegurar que se ejecute primero
   updateConnectionStatus();
+  if (!window.matchMedia('(display-mode: standalone)').matches && 'onbeforeinstallprompt' in window && elements.installButton) {
+    elements.installButton.classList.remove('hidden');
+  }
   elements.dailyRateInput.value = dailyRate.toFixed(2);
   elements.dailyRateDisplay.textContent = dailyRate.toFixed(2);
   elements.debtForm.addEventListener('submit', handleFormSubmit);
@@ -140,7 +143,10 @@ function updateFilterUI(activeButton) {
 }
 
 async function handleInstallClick() {
-  if (!deferredInstallPrompt) return;
+  if (!deferredInstallPrompt) {
+    await showConfirmModal('La instalación todavía no está disponible. Vuelve a intentarlo en unos segundos.');
+    return;
+  }
   deferredInstallPrompt.prompt();
   const choiceResult = await deferredInstallPrompt.userChoice;
   if (choiceResult.outcome === 'accepted') {
@@ -257,6 +263,14 @@ function cancelEditing() {
 async function deleteDebt(debtId) {
   const confirmed = await showConfirmModal('¿Estás seguro de que quieres eliminar esta deuda? Esta acción no se puede deshacer.');
   if (!confirmed) return;
+  if (navigator.onLine) {
+    try {
+      const { error } = await supabaseClient.from('deudas').delete().eq('id', debtId);
+      if (error) throw error;
+    } catch (error) {
+      console.warn('No se pudo eliminar la deuda en Supabase:', error);
+    }
+  }
   await db.deudas.delete(debtId);
   renderDebtList();
   calculateSummary();
@@ -346,7 +360,8 @@ function hidePromptModal(result) {
 async function copyDebtDetail() {
   if (!currentModalDebt) return;
   const useUsd = await showConfirmModal('¿Deseas copiar el detalle en USD? Presiona Aceptar para USD, Cancelar para Bs.');
-  const text = buildCopyText(currentModalDebt, useUsd);
+  const pagos = await db.pagos.where('deuda_id').equals(currentModalDebt.id).toArray();
+  const text = buildCopyText(currentModalDebt, useUsd, pagos);
   navigator.clipboard.writeText(text).then(() => {
     alert(useUsd ? 'Detalle copiado en USD.' : 'Detalle copiado en Bs.');
   }).catch(() => {
@@ -354,7 +369,7 @@ async function copyDebtDetail() {
   });
 }
 
-function buildCopyText(deuda, inUsd) {
+function buildCopyText(deuda, inUsd, pagos = []) {
   const items = deuda.items || [{ detalle: deuda.producto || 'Producto', cantidad: deuda.cantidad || 0, precio_unitario: deuda.precio_unitario || 0 }];
   const total = getDebtTotal(deuda);
   const convertedTotal = inUsd
@@ -374,35 +389,77 @@ function buildCopyText(deuda, inUsd) {
     ''
   ];
 
-  items.forEach((item) => {
-    const itemTotal = item.cantidad * item.precio_unitario;
-    const unitPrice = inUsd
-      ? deuda.moneda === 'USD'
-        ? item.precio_unitario
-        : dailyRate ? item.precio_unitario / dailyRate : 0
-      : deuda.moneda === 'BS'
-        ? item.precio_unitario
-        : item.precio_unitario * dailyRate;
-    const lineTotal = inUsd
-      ? deuda.moneda === 'USD'
-        ? itemTotal
-        : dailyRate ? itemTotal / dailyRate : 0
-      : deuda.moneda === 'BS'
-        ? itemTotal
-        : itemTotal * dailyRate;
-    const unitPriceText = inUsd
-      ? formatCurrency(unitPrice, 'en-US', 'USD')
-      : formatBs(unitPrice);
-    const lineTotalText = inUsd
-      ? formatCurrency(lineTotal, 'en-US', 'USD')
-      : formatBs(lineTotal);
+  if (inUsd) {
+    // Incluir detalle completo solo si es USD
+    items.forEach((item) => {
+      const itemTotal = item.cantidad * item.precio_unitario;
+      const unitPrice = inUsd
+        ? deuda.moneda === 'USD'
+          ? item.precio_unitario
+          : dailyRate ? item.precio_unitario / dailyRate : 0
+        : deuda.moneda === 'BS'
+          ? item.precio_unitario
+          : item.precio_unitario * dailyRate;
+      const lineTotal = inUsd
+        ? deuda.moneda === 'USD'
+          ? itemTotal
+          : dailyRate ? itemTotal / dailyRate : 0
+        : deuda.moneda === 'BS'
+          ? itemTotal
+          : itemTotal * dailyRate;
+      const unitPriceText = inUsd
+        ? formatCurrency(unitPrice, 'en-US', 'USD')
+        : formatBs(unitPrice);
+      const lineTotalText = inUsd
+        ? formatCurrency(lineTotal, 'en-US', 'USD')
+        : formatBs(lineTotal);
 
-    lines.push(`${item.detalle}:`);
-    lines.push(`${item.cantidad} x ${unitPriceText} = ${lineTotalText}`);
+      lines.push(`${item.detalle}:`);
+      lines.push(`${item.cantidad} x ${unitPriceText} = ${lineTotalText}`);
+      lines.push('');
+    });
+  } else {
+    // Para Bs, solo el total convertido, sin precios unitarios
+    lines.push('Detalle de productos:');
+    items.forEach((item) => {
+      lines.push(`${item.detalle}: ${item.cantidad} unidades`);
+    });
     lines.push('');
-  });
+  }
 
   lines.push(`Total deuda: ${totalText}`);
+
+  // Incluir abonos
+  if (pagos.length > 0) {
+    lines.push('');
+    lines.push('Abonos realizados:');
+    let totalAbonado = 0;
+    pagos.forEach((pago) => {
+      const pagoAmount = inUsd
+        ? pago.currency === 'USD'
+          ? pago.amount
+          : dailyRate ? pago.amount / dailyRate : 0
+        : pago.currency === 'BS'
+          ? pago.amount
+          : pago.amount * dailyRate;
+      totalAbonado += pagoAmount;
+      const pagoText = inUsd
+        ? formatCurrency(pagoAmount, 'en-US', 'USD')
+        : formatBs(pagoAmount);
+      const date = new Date(pago.date).toLocaleDateString('es-ES');
+      lines.push(`${date}: ${pagoText}`);
+    });
+    const totalAbonadoText = inUsd
+      ? formatCurrency(totalAbonado, 'en-US', 'USD')
+      : formatBs(totalAbonado);
+    lines.push(`Total abonado: ${totalAbonadoText}`);
+
+    const restante = convertedTotal - totalAbonado;
+    const restanteText = inUsd
+      ? formatCurrency(Math.max(0, restante), 'en-US', 'USD')
+      : formatBs(Math.max(0, restante));
+    lines.push(`Restante: ${restanteText}`);
+  }
 
   return lines.join('\n');
 }
