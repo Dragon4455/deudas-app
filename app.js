@@ -282,7 +282,7 @@ async function deleteDebt(debtId) {
 async function openDebtModal(deuda) {
   currentModalDebt = deuda;
   const items = deuda.items || [{ detalle: deuda.producto || 'Producto', cantidad: deuda.cantidad || 0, precio_unitario: deuda.precio_unitario || 0 }];
-  const total = getDebtTotal(deuda);
+  const total = items.reduce((sum, item) => sum + item.cantidad * item.precio_unitario, 0); // Total original
   const totalUsd = deuda.moneda === 'USD' ? total : dailyRate ? total / dailyRate : 0;
   const totalBs = deuda.moneda === 'BS' ? total : total * dailyRate;
 
@@ -373,7 +373,7 @@ async function copyDebtDetail() {
 
 function buildCopyText(deuda, inUsd, pagos = []) {
   const items = deuda.items || [{ detalle: deuda.producto || 'Producto', cantidad: deuda.cantidad || 0, precio_unitario: deuda.precio_unitario || 0 }];
-  const total = getDebtTotal(deuda);
+  const total = items.reduce((sum, item) => sum + item.cantidad * item.precio_unitario, 0); // Total original sin abonos
   const totalUsd = deuda.moneda === 'USD' ? total : dailyRate ? total / dailyRate : 0;
   const totalBs = deuda.moneda === 'BS' ? total : total * dailyRate;
 
