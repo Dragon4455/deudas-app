@@ -261,7 +261,7 @@ function cancelEditing() {
 }
 
 async function deleteDebt(debtId) {
-  const confirmed = await showConfirmModal('¿Estás seguro de que quieres eliminar esta deuda? Esta acción no se puede deshacer.');
+  const confirmed = await showConfirmModal('¿Estás seguro de que quieres eliminar esta deuda? Esta acción no se puede deshacer.', 'Cancelar', 'Eliminar');
   if (!confirmed) return;
   if (navigator.onLine) {
     try {
@@ -323,10 +323,12 @@ function closeDebtModal() {
 }
 
 // Funciones para modales personalizados
-function showConfirmModal(message) {
+function showConfirmModal(message, cancelText = 'Cancelar', acceptText = 'Aceptar') {
   return new Promise((resolve) => {
     confirmResolve = resolve;
     elements.confirmMessage.textContent = message;
+    elements.confirmCancel.textContent = cancelText;
+    elements.confirmAccept.textContent = acceptText;
     elements.confirmModal.classList.remove('hidden');
   });
 }
@@ -359,7 +361,7 @@ function hidePromptModal(result) {
 
 async function copyDebtDetail() {
   if (!currentModalDebt) return;
-  const useUsd = await showConfirmModal('¿Deseas copiar el detalle en USD? Presiona Aceptar para USD, Cancelar para Bs.');
+  const useUsd = await showConfirmModal('¿En qué moneda deseas copiar el detalle?', 'Bs', 'USD');
   const pagos = await db.pagos.where('deuda_id').equals(currentModalDebt.id).toArray();
   const text = buildCopyText(currentModalDebt, useUsd, pagos);
   navigator.clipboard.writeText(text).then(() => {
@@ -409,22 +411,32 @@ function buildCopyText(deuda, inUsd, pagos = []) {
           : itemTotal * dailyRate;
       const unitPriceText = inUsd
         ? formatCurrency(unitPrice, 'en-US', 'USD')
-        : formatBs(unitPrice);
+        : formatCurrency(unitPrice, 'en-US', 'USD'); // Siempre en USD para precios unitarios cuando copie en Bs
       const lineTotalText = inUsd
         ? formatCurrency(lineTotal, 'en-US', 'USD')
-        : formatBs(lineTotal);
+        : formatBs(lineTotal); // Total en Bs
 
       lines.push(`${item.detalle}:`);
       lines.push(`${item.cantidad} x ${unitPriceText} = ${lineTotalText}`);
       lines.push('');
     });
   } else {
-    // Para Bs, solo el total convertido, sin precios unitarios
-    lines.push('Detalle de productos:');
+    // Para Bs, precios unitarios en USD, total en Bs
     items.forEach((item) => {
-      lines.push(`${item.detalle}: ${item.cantidad} unidades`);
+      const itemTotal = item.cantidad * item.precio_unitario;
+      const unitPrice = deuda.moneda === 'USD'
+        ? item.precio_unitario
+        : dailyRate ? item.precio_unitario / dailyRate : 0; // Convertir a USD
+      const lineTotal = deuda.moneda === 'BS'
+        ? itemTotal
+        : itemTotal * dailyRate; // Total en Bs
+      const unitPriceText = formatCurrency(unitPrice, 'en-US', 'USD');
+      const lineTotalText = formatBs(lineTotal);
+
+      lines.push(`${item.detalle}:`);
+      lines.push(`${item.cantidad} x ${unitPriceText} = ${lineTotalText}`);
+      lines.push('');
     });
-    lines.push('');
   }
 
   lines.push(`Total deuda: ${totalText}`);
@@ -767,7 +779,7 @@ async function addAbono(deuda) {
   const amount = await showPromptModal('Monto del abono:');
   if (!amount || isNaN(amount) || amount <= 0) return;
 
-  const currency = await showConfirmModal('¿Es en USD? Presiona Aceptar para USD, Cancelar para Bs.') ? 'USD' : 'BS';
+  const currency = await showConfirmModal('¿En qué moneda es el abono?', 'Bs', 'USD') ? 'USD' : 'BS';
 
   let convertedAmount = Number(amount);
   if (deuda.moneda === 'USD' && currency === 'BS') {
