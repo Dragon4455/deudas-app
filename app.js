@@ -374,103 +374,67 @@ async function copyDebtDetail() {
 function buildCopyText(deuda, inUsd, pagos = []) {
   const items = deuda.items || [{ detalle: deuda.producto || 'Producto', cantidad: deuda.cantidad || 0, precio_unitario: deuda.precio_unitario || 0 }];
   const total = getDebtTotal(deuda);
-  const convertedTotal = inUsd
-    ? deuda.moneda === 'USD'
-      ? total
-      : dailyRate ? total / dailyRate : 0
-    : deuda.moneda === 'BS'
-      ? total
-      : total * dailyRate;
-  const currencySymbol = inUsd ? '$' : 'Bs';
-  const totalText = inUsd
-    ? (dailyRate ? formatCurrency(convertedTotal, 'en-US', 'USD') : 'N/A')
-    : formatBs(convertedTotal);
+  const totalUsd = deuda.moneda === 'USD' ? total : dailyRate ? total / dailyRate : 0;
+  const totalBs = deuda.moneda === 'BS' ? total : total * dailyRate;
 
   const lines = [
     deuda.cliente,
     ''
   ];
 
+  items.forEach((item) => {
+    const itemTotal = item.cantidad * item.precio_unitario;
+    const unitPriceUsd = deuda.moneda === 'USD' ? item.precio_unitario : dailyRate ? item.precio_unitario / dailyRate : 0;
+    const itemTotalUsd = deuda.moneda === 'USD' ? itemTotal : dailyRate ? itemTotal / dailyRate : 0;
+    const unitPriceText = formatCurrency(unitPriceUsd, 'en-US', 'USD');
+    const itemTotalText = formatCurrency(itemTotalUsd, 'en-US', 'USD');
+
+    lines.push(`${item.detalle}:`);
+    lines.push(`${item.cantidad} x ${unitPriceText} = ${itemTotalText}`);
+    lines.push('');
+  });
+
   if (inUsd) {
-    // Incluir detalle completo solo si es USD
-    items.forEach((item) => {
-      const itemTotal = item.cantidad * item.precio_unitario;
-      const unitPrice = inUsd
-        ? deuda.moneda === 'USD'
-          ? item.precio_unitario
-          : dailyRate ? item.precio_unitario / dailyRate : 0
-        : deuda.moneda === 'BS'
-          ? item.precio_unitario
-          : item.precio_unitario * dailyRate;
-      const lineTotal = inUsd
-        ? deuda.moneda === 'USD'
-          ? itemTotal
-          : dailyRate ? itemTotal / dailyRate : 0
-        : deuda.moneda === 'BS'
-          ? itemTotal
-          : itemTotal * dailyRate;
-      const unitPriceText = inUsd
-        ? formatCurrency(unitPrice, 'en-US', 'USD')
-        : formatCurrency(unitPrice, 'en-US', 'USD'); // Siempre en USD para precios unitarios cuando copie en Bs
-      const lineTotalText = inUsd
-        ? formatCurrency(lineTotal, 'en-US', 'USD')
-        : formatBs(lineTotal); // Total en Bs
-
-      lines.push(`${item.detalle}:`);
-      lines.push(`${item.cantidad} x ${unitPriceText} = ${lineTotalText}`);
-      lines.push('');
-    });
+    // Solo USD
+    const totalText = formatCurrency(totalUsd, 'en-US', 'USD');
+    lines.push(`Total deuda: ${totalText}`);
   } else {
-    // Para Bs, precios unitarios en USD, total en Bs
-    items.forEach((item) => {
-      const itemTotal = item.cantidad * item.precio_unitario;
-      const unitPrice = deuda.moneda === 'USD'
-        ? item.precio_unitario
-        : dailyRate ? item.precio_unitario / dailyRate : 0; // Convertir a USD
-      const lineTotal = deuda.moneda === 'BS'
-        ? itemTotal
-        : itemTotal * dailyRate; // Total en Bs
-      const unitPriceText = formatCurrency(unitPrice, 'en-US', 'USD');
-      const lineTotalText = formatBs(lineTotal);
-
-      lines.push(`${item.detalle}:`);
-      lines.push(`${item.cantidad} x ${unitPriceText} = ${lineTotalText}`);
-      lines.push('');
-    });
+    // Bs y USD
+    const totalBsText = formatBs(totalBs);
+    const totalUsdText = formatCurrency(totalUsd, 'en-US', 'USD');
+    lines.push(`Total deuda: ${totalBsText}`);
+    lines.push(`Total deuda: ${totalUsdText}`);
   }
-
-  lines.push(`Total deuda: ${totalText}`);
 
   // Incluir abonos
   if (pagos.length > 0) {
     lines.push('');
     lines.push('Abonos realizados:');
-    let totalAbonado = 0;
+    let totalAbonadoBs = 0;
+    let totalAbonadoUsd = 0;
     pagos.forEach((pago) => {
-      const pagoAmount = inUsd
-        ? pago.currency === 'USD'
-          ? pago.amount
-          : dailyRate ? pago.amount / dailyRate : 0
-        : pago.currency === 'BS'
-          ? pago.amount
-          : pago.amount * dailyRate;
-      totalAbonado += pagoAmount;
-      const pagoText = inUsd
-        ? formatCurrency(pagoAmount, 'en-US', 'USD')
-        : formatBs(pagoAmount);
+      const pagoAmountBs = pago.currency === 'BS' ? pago.amount : pago.amount * dailyRate;
+      const pagoAmountUsd = pago.currency === 'USD' ? pago.amount : dailyRate ? pago.amount / dailyRate : 0;
+      totalAbonadoBs += pagoAmountBs;
+      totalAbonadoUsd += pagoAmountUsd;
+      const pagoBsText = formatBs(pagoAmountBs);
       const date = new Date(pago.date).toLocaleDateString('es-ES');
-      lines.push(`${date}: ${pagoText}`);
+      lines.push(`${date}: ${pagoBsText}`);
     });
-    const totalAbonadoText = inUsd
-      ? formatCurrency(totalAbonado, 'en-US', 'USD')
-      : formatBs(totalAbonado);
-    lines.push(`Total abonado: ${totalAbonadoText}`);
+    const totalAbonadoBsText = formatBs(totalAbonadoBs);
+    lines.push(`Total abonado: ${totalAbonadoBsText}`);
 
-    const restante = convertedTotal - totalAbonado;
-    const restanteText = inUsd
-      ? formatCurrency(Math.max(0, restante), 'en-US', 'USD')
-      : formatBs(Math.max(0, restante));
-    lines.push(`Restante: ${restanteText}`);
+    const restanteBs = totalBs - totalAbonadoBs;
+    const restanteUsd = totalUsd - totalAbonadoUsd;
+    const restanteBsText = formatBs(Math.max(0, restanteBs));
+    const restanteUsdText = formatCurrency(Math.max(0, restanteUsd), 'en-US', 'USD');
+
+    if (inUsd) {
+      lines.push(`Restante: ${restanteUsdText}`);
+    } else {
+      lines.push(`Restante: ${restanteBsText}`);
+      lines.push(`Restante: ${restanteUsdText}`);
+    }
   }
 
   return lines.join('\n');
