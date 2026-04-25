@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <title>Deudas Local - Offline First</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -25,6 +27,9 @@
               <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Sincronización</p>
               <p id="syncStatus" class="mt-2 text-lg font-semibold">Listo</p>
             </div>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button id="installButton" class="hidden rounded-3xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300">Instalar app</button>
           </div>
         </div>
       </header>

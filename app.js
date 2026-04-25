@@ -47,13 +47,29 @@ const elements = {
   modalItemsList: document.getElementById('modalItemsList'),
   modalCopyButton: document.getElementById('modalCopyButton'),
   modalCloseButton: document.getElementById('modalCloseButton'),
-  cancelEditBtn: document.getElementById('cancelEditBtn')
+  cancelEditBtn: document.getElementById('cancelEditBtn'),
+  installButton: document.getElementById('installButton')
 };
 
 let currentFilter = 'ALL';
 let dailyRate = 30.00;
 let currentModalDebt = null;
 let editingDebtId = null;
+let deferredInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  if (elements.installButton) {
+    elements.installButton.classList.remove('hidden');
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  if (elements.installButton) {
+    elements.installButton.classList.add('hidden');
+  }
+});
 
 function initUI() {
   resetItemRows(); // Asegurar que se ejecute primero
@@ -64,6 +80,7 @@ function initUI() {
   elements.dailyRateInput.addEventListener('change', handleRateChange);
   elements.searchInput.addEventListener('input', renderDebtList);
   elements.addItemButton.addEventListener('click', addItemRow);
+  elements.installButton.addEventListener('click', handleInstallClick);
   elements.modalCopyButton.addEventListener('click', copyDebtDetail);
   elements.modalCloseButton.addEventListener('click', closeDebtModal);
   elements.cancelEditBtn.addEventListener('click', cancelEditing);
@@ -95,6 +112,19 @@ function updateFilterUI(activeButton) {
     button.classList.toggle('text-cyan-200', button === activeButton);
     button.classList.toggle('bg-slate-950', button !== activeButton);
   });
+}
+
+async function handleInstallClick() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const choiceResult = await deferredInstallPrompt.userChoice;
+  if (choiceResult.outcome === 'accepted') {
+    console.log('Instalación aceptada');
+  }
+  deferredInstallPrompt = null;
+  if (elements.installButton) {
+    elements.installButton.classList.add('hidden');
+  }
 }
 
 function toggleTransaccionField() {
@@ -601,6 +631,8 @@ async function addAbono(deuda) {
     syncPendingRecords();
   }
 }
+
+async function calculateSummary() {
   const allDeudas = await db.deudas.toArray();
   const pendientes = allDeudas.filter((deuda) => deuda.estado === 'PENDIENTE');
   const totalUsd = pendientes
@@ -612,7 +644,7 @@ async function addAbono(deuda) {
   const totalBsFromUsd = totalUsd * dailyRate;
   elements.totalUsd.textContent = formatCurrency(totalUsd, 'en-US', 'USD');
   elements.totalBs.textContent = formatBs(totalBsDirect + totalBsFromUsd);
-
+}
 
 function updateConnectionStatus() {
   const online = navigator.onLine;

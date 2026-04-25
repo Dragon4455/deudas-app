@@ -2,6 +2,7 @@ const CACHE_NAME = 'deudas-local-v1';
 const ASSETS = [
   '/',
   'index.html',
+  'manifest.webmanifest',
   'app.js',
   'sw.js',
   'https://cdn.tailwindcss.com',

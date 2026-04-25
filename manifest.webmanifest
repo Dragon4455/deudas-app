@@ -1,0 +1,11 @@
+{
+  "name": "Deudas Local",
+  "short_name": "Deudas",
+  "description": "Gestión de deudas offline con sincronización y pagos.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "scope": "/"
+}
