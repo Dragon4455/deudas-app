@@ -209,7 +209,7 @@ async function deleteDebt(debtId) {
   }
 }
 
-function openDebtModal(deuda) {
+async function openDebtModal(deuda) {
   currentModalDebt = deuda;
   const items = deuda.items || [{ detalle: deuda.producto || 'Producto', cantidad: deuda.cantidad || 0, precio_unitario: deuda.precio_unitario || 0 }];
   const total = getDebtTotal(deuda);
@@ -518,7 +518,7 @@ async function renderDebtList() {
       const id = button.dataset.id;
       const deuda = await db.deudas.get(id);
       if (!deuda) return;
-      openDebtModal(deuda);
+      await openDebtModal(deuda);
     });
   });
 
@@ -612,7 +612,7 @@ async function addAbono(deuda) {
   const totalBsFromUsd = totalUsd * dailyRate;
   elements.totalUsd.textContent = formatCurrency(totalUsd, 'en-US', 'USD');
   elements.totalBs.textContent = formatBs(totalBsDirect + totalBsFromUsd);
-}
+
 
 function updateConnectionStatus() {
   const online = navigator.onLine;
