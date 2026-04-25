@@ -1,6 +1,7 @@
 const db = new Dexie('DeudasLocalDB');
-db.version(1).stores({
-  deudas: 'id, cliente, estado, sync_status, fecha, moneda'
+db.version(2).stores({
+  deudas: 'id, cliente, estado, sync_status, fecha, moneda',
+  pagos: 'id, deuda_id, amount, currency, date'
 });
 
 // Supabase client
@@ -231,6 +232,17 @@ function openDebtModal(deuda) {
       </li>
     `;
   }).join('');
+
+  // Add payments
+  const pagos = await db.pagos.where('deuda_id').equals(deuda.id).toArray();
+  if (pagos.length > 0) {
+    elements.modalItemsList.innerHTML += '<h3 class="text-white font-semibold mt-4">Abonos</h3>' + pagos.map((pago) => `
+      <li class="rounded-3xl border border-green-700 bg-green-950/20 p-4">
+        <p class="font-semibold text-green-200">${formatCurrency(pago.amount, 'en-US', pago.currency === 'USD' ? 'USD' : 'VES')} (${pago.currency})</p>
+        <p class="text-slate-400 text-sm">${formatDate(pago.date)}</p>
+      </li>
+    `).join('');
+  }
 
   elements.debtModal.classList.remove('hidden');
 }
@@ -491,6 +503,7 @@ async function renderDebtList() {
             <button data-id="${deuda.id}" class="view-detail-btn rounded-3xl border border-cyan-500/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/10">Ver detalle</button>
             <button data-id="${deuda.id}" class="edit-btn rounded-3xl border border-amber-500/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/10">Editar</button>
             <button data-id="${deuda.id}" class="delete-btn rounded-3xl border border-rose-500/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/10">Eliminar</button>
+            <button data-id="${deuda.id}" class="abono-btn rounded-3xl border border-green-500/30 bg-slate-950 px-5 py-3 text-sm font-semibold text-green-200 transition hover:bg-green-500/10">Abonar</button>
             <button data-id="${deuda.id}" class="mark-paid-btn rounded-3xl bg-cyan-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 ${deuda.estado === 'PAGADO' ? 'opacity-50 cursor-not-allowed' : ''}">Marcar pagado</button>
           </div>
         </div>
@@ -541,9 +554,53 @@ async function renderDebtList() {
       }
     });
   });
+
+  document.querySelectorAll('.abono-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const id = button.dataset.id;
+      const deuda = await db.deudas.get(id);
+      if (!deuda || deuda.estado === 'PAGADO') return;
+      addAbono(deuda);
+    });
+  });
 }
 
-async function calculateSummary() {
+async function addAbono(deuda) {
+  const amount = prompt('Monto del abono:');
+  if (!amount || isNaN(amount) || amount <= 0) return;
+
+  const currency = confirm('¿Es en USD? Presiona OK para USD, Cancelar para Bs.') ? 'USD' : 'BS';
+
+  let convertedAmount = Number(amount);
+  if (deuda.moneda === 'USD' && currency === 'BS') {
+    convertedAmount = amount / dailyRate;
+  } else if (deuda.moneda === 'BS' && currency === 'USD') {
+    convertedAmount = amount * dailyRate;
+  }
+
+  const newTotal = Math.max(0, deuda.total - convertedAmount);
+
+  // Update debt
+  await db.deudas.update(deuda.id, { total: newTotal, sync_status: 0 });
+
+  // Add payment
+  await db.pagos.add({
+    id: crypto.randomUUID(),
+    deuda_id: deuda.id,
+    amount: Number(amount),
+    currency,
+    date: new Date().toISOString()
+  });
+
+  elements.syncStatus.textContent = '🟡 Cambios pendientes';
+  elements.syncStatus.classList.add('text-amber-300');
+  elements.syncStatus.classList.remove('text-emerald-300');
+  renderDebtList();
+  calculateSummary();
+  if (navigator.onLine) {
+    syncPendingRecords();
+  }
+}
   const allDeudas = await db.deudas.toArray();
   const pendientes = allDeudas.filter((deuda) => deuda.estado === 'PENDIENTE');
   const totalUsd = pendientes

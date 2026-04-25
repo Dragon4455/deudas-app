@@ -36,6 +36,19 @@ CREATE INDEX idx_tasas_diarias_fecha ON tasas_diarias(fecha DESC);
 -- ALTER TABLE tasas_diarias ENABLE ROW LEVEL SECURITY;
 -- CREATE POLICY "Permitir todo para usuarios autenticados" ON tasas_diarias FOR ALL USING (auth.role() = 'authenticated');
 
--- Deshabilitar RLS para acceso público (temporal, para testing)
-ALTER TABLE deudas DISABLE ROW LEVEL SECURITY;
-ALTER TABLE tasas_diarias DISABLE ROW LEVEL SECURITY;
+-- Tabla de pagos (abonos)
+CREATE TABLE pagos (
+  id SERIAL PRIMARY KEY,
+  deuda_id UUID REFERENCES deudas(id) ON DELETE CASCADE,
+  amount NUMERIC NOT NULL,
+  currency TEXT NOT NULL, -- 'USD' or 'BS'
+  date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Índice para pagos
+CREATE INDEX idx_pagos_deuda_id ON pagos(deuda_id);
+CREATE INDEX idx_pagos_date ON pagos(date DESC);
+
+-- Deshabilitar RLS para pagos también
+ALTER TABLE pagos DISABLE ROW LEVEL SECURITY;
