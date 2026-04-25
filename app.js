@@ -48,7 +48,16 @@ const elements = {
   modalCopyButton: document.getElementById('modalCopyButton'),
   modalCloseButton: document.getElementById('modalCloseButton'),
   cancelEditBtn: document.getElementById('cancelEditBtn'),
-  installButton: document.getElementById('installButton')
+  installButton: document.getElementById('installButton'),
+  confirmModal: document.getElementById('confirmModal'),
+  confirmMessage: document.getElementById('confirmMessage'),
+  confirmCancel: document.getElementById('confirmCancel'),
+  confirmAccept: document.getElementById('confirmAccept'),
+  promptModal: document.getElementById('promptModal'),
+  promptMessage: document.getElementById('promptMessage'),
+  promptInput: document.getElementById('promptInput'),
+  promptCancel: document.getElementById('promptCancel'),
+  promptAccept: document.getElementById('promptAccept')
 };
 
 let currentFilter = 'ALL';
@@ -56,6 +65,8 @@ let dailyRate = 30.00;
 let currentModalDebt = null;
 let editingDebtId = null;
 let deferredInstallPrompt = null;
+let confirmResolve = null;
+let promptResolve = null;
 
 window.addEventListener('beforeinstallprompt', (event) => {
   event.preventDefault();
@@ -87,6 +98,20 @@ function initUI() {
   elements.debtModal.addEventListener('click', (event) => {
     if (event.target === elements.debtModal) {
       closeDebtModal();
+    }
+  });
+  elements.confirmCancel.addEventListener('click', () => hideConfirmModal(false));
+  elements.confirmAccept.addEventListener('click', () => hideConfirmModal(true));
+  elements.promptCancel.addEventListener('click', () => hidePromptModal(null));
+  elements.promptAccept.addEventListener('click', () => hidePromptModal(elements.promptInput.value));
+  elements.confirmModal.addEventListener('click', (event) => {
+    if (event.target === elements.confirmModal) {
+      hideConfirmModal(false);
+    }
+  });
+  elements.promptModal.addEventListener('click', (event) => {
+    if (event.target === elements.promptModal) {
+      hidePromptModal(null);
     }
   });
   document.querySelectorAll('input[name="moneda"]').forEach((radio) => {
@@ -230,7 +255,8 @@ function cancelEditing() {
 }
 
 async function deleteDebt(debtId) {
-  if (!confirm('¿Estás seguro de que quieres eliminar esta deuda? Esta acción no se puede deshacer.')) return;
+  const confirmed = await showConfirmModal('¿Estás seguro de que quieres eliminar esta deuda? Esta acción no se puede deshacer.');
+  if (!confirmed) return;
   await db.deudas.delete(debtId);
   renderDebtList();
   calculateSummary();
@@ -282,9 +308,44 @@ function closeDebtModal() {
   currentModalDebt = null;
 }
 
-function copyDebtDetail() {
+// Funciones para modales personalizados
+function showConfirmModal(message) {
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+    elements.confirmMessage.textContent = message;
+    elements.confirmModal.classList.remove('hidden');
+  });
+}
+
+function hideConfirmModal(result) {
+  elements.confirmModal.classList.add('hidden');
+  if (confirmResolve) {
+    confirmResolve(result);
+    confirmResolve = null;
+  }
+}
+
+function showPromptModal(message, defaultValue = '') {
+  return new Promise((resolve) => {
+    promptResolve = resolve;
+    elements.promptMessage.textContent = message;
+    elements.promptInput.value = defaultValue;
+    elements.promptModal.classList.remove('hidden');
+    elements.promptInput.focus();
+  });
+}
+
+function hidePromptModal(result) {
+  elements.promptModal.classList.add('hidden');
+  if (promptResolve) {
+    promptResolve(result);
+    promptResolve = null;
+  }
+}
+
+async function copyDebtDetail() {
   if (!currentModalDebt) return;
-  const useUsd = confirm('¿Deseas copiar el detalle en USD? Presiona Aceptar para USD, Cancelar para Bs.');
+  const useUsd = await showConfirmModal('¿Deseas copiar el detalle en USD? Presiona Aceptar para USD, Cancelar para Bs.');
   const text = buildCopyText(currentModalDebt, useUsd);
   navigator.clipboard.writeText(text).then(() => {
     alert(useUsd ? 'Detalle copiado en USD.' : 'Detalle copiado en Bs.');
@@ -646,10 +707,10 @@ async function renderDebtList() {
 }
 
 async function addAbono(deuda) {
-  const amount = prompt('Monto del abono:');
+  const amount = await showPromptModal('Monto del abono:');
   if (!amount || isNaN(amount) || amount <= 0) return;
 
-  const currency = confirm('¿Es en USD? Presiona OK para USD, Cancelar para Bs.') ? 'USD' : 'BS';
+  const currency = await showConfirmModal('¿Es en USD? Presiona Aceptar para USD, Cancelar para Bs.') ? 'USD' : 'BS';
 
   let convertedAmount = Number(amount);
   if (deuda.moneda === 'USD' && currency === 'BS') {

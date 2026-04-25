@@ -187,6 +187,51 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal de Confirmación -->
+      <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/90 p-4">
+        <div class="w-full max-w-md overflow-hidden rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
+          <div class="p-6">
+            <div class="text-center">
+              <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20">
+                <svg class="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-white">Confirmar acción</h3>
+              <p id="confirmMessage" class="mt-2 text-sm text-slate-300"></p>
+            </div>
+            <div class="mt-6 flex gap-3">
+              <button id="confirmCancel" class="flex-1 rounded-3xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-600">Cancelar</button>
+              <button id="confirmAccept" class="flex-1 rounded-3xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-400">Aceptar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal de Prompt -->
+      <div id="promptModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/90 p-4">
+        <div class="w-full max-w-md overflow-hidden rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
+          <div class="p-6">
+            <div class="text-center">
+              <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/20">
+                <svg class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-white">Ingresar información</h3>
+              <p id="promptMessage" class="mt-2 text-sm text-slate-300"></p>
+            </div>
+            <div class="mt-4">
+              <input id="promptInput" type="text" class="w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-3 text-white placeholder-slate-400 focus:border-cyan-400 focus:outline-none" placeholder="Ingrese el valor...">
+            </div>
+            <div class="mt-6 flex gap-3">
+              <button id="promptCancel" class="flex-1 rounded-3xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-600">Cancelar</button>
+              <button id="promptAccept" class="flex-1 rounded-3xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">Aceptar</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
