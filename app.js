@@ -455,6 +455,7 @@ function getDebtTotal(deuda) {
 
 async function loadData() {
   await loadInitialRate();
+  await syncFromServer(); // Cargar deudas desde Supabase
   renderDebtList();
   calculateSummary();
   if (navigator.onLine) {
@@ -479,6 +480,55 @@ async function loadInitialRate() {
     }
   } catch (error) {
     console.warn('No se pudo cargar la tasa inicial:', error);
+  }
+}
+
+async function syncFromServer() {
+  if (!navigator.onLine) return;
+  try {
+    const { data: deudasData, error: deudasError } = await supabaseClient
+      .from('deudas')
+      .select('*');
+    if (deudasError) throw deudasError;
+
+    const { data: pagosData, error: pagosError } = await supabaseClient
+      .from('pagos')
+      .select('*');
+    if (pagosError) throw pagosError;
+
+    // Insertar deudas en local DB si no existen
+    for (const deuda of deudasData || []) {
+      const existing = await db.deudas.get(deuda.id);
+      if (!existing) {
+        await db.deudas.add({
+          id: deuda.id,
+          cliente: deuda.cliente,
+          items: JSON.parse(deuda.items || '[]'),
+          total: deuda.total,
+          moneda: deuda.moneda,
+          tasa_transaccion: deuda.tasa_transaccion,
+          fecha: deuda.fecha,
+          estado: deuda.estado,
+          sync_status: 1
+        });
+      }
+    }
+
+    // Insertar pagos en local DB si no existen
+    for (const pago of pagosData || []) {
+      const existing = await db.pagos.get(pago.id);
+      if (!existing) {
+        await db.pagos.add({
+          id: pago.id,
+          deuda_id: pago.deuda_id,
+          amount: pago.amount,
+          currency: pago.currency,
+          date: pago.date
+        });
+      }
+    }
+  } catch (error) {
+    console.warn('Error sincronizando desde servidor:', error);
   }
 }
 
